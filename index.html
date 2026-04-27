@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Migration Scanner</title>
+<style>
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222638;
+  --border:#2e3248;--border2:#3d4260;
+  --text:#e8eaf2;--muted:#7b80a0;
+  --accent:#4f7bff;--accent-dim:#1e2d5c;
+  --green:#2ecc8f;--green-dim:#0d3326;
+  --amber:#f0a130;--amber-dim:#3a2508;
+  --red:#e85d5d;--red-dim:#3a1212;
+  --purple:#a67fff;--teal:#38d4c8;
+  --mono:'Courier New',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;display:flex;flex-direction:column;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.logo{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.logo-icon{width:30px;height:30px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.logo h1{font-size:14px;font-weight:600;}.logo span{font-size:11px;color:var(--muted);}
+.hdr-right{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap;}
+.tabs{display:flex;gap:2px;background:var(--surface2);border-radius:7px;padding:3px;border:1px solid var(--border);}
+.tab{padding:5px 13px;border-radius:5px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);border:none;background:none;font-family:var(--sans);transition:all .15s;white-space:nowrap;}
+.tab.active{background:var(--accent-dim);color:var(--accent);}
+.btn{padding:5px 13px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s;font-weight:500;white-space:nowrap;}
+.btn:hover{background:var(--border);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-primary:hover{background:#3a6aff;}
+.btn-green{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.btn-red{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+.btn-sm{padding:4px 11px;font-size:11px;}
+main{display:flex;flex:1;overflow:hidden;height:calc(100vh - 54px);}
+.sidebar{width:268px;min-width:190px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.s-sec{padding:13px;border-bottom:1px solid var(--border);}
+.s-lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:8px;padding:15px 10px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2);}
+.drop-zone:hover,.drop-zone.dov{border-color:var(--accent);background:var(--accent-dim);}
+.drop-zone strong{color:var(--text);font-size:12px;display:block;margin-bottom:3px;}
+.drop-zone p{font-size:11px;color:var(--muted);line-height:1.4;}
+.file-list{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+.file-chip{display:flex;align-items:center;gap:5px;padding:3px 7px;background:var(--green-dim);border:1px solid var(--green);border-radius:5px;font-size:10px;color:var(--green);font-family:var(--mono);}
+.file-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+.file-chip button{background:none;border:none;color:var(--green);cursor:pointer;font-size:14px;margin-left:auto;opacity:.7;line-height:1;}
+.file-chip button:hover{opacity:1;}
+input[type=text],input[type=url],input[type=password],input[type=number],select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--sans);padding:6px 8px;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+select option{background:var(--surface2);}
+.filter-stack{display:flex;flex-direction:column;gap:5px;}
+.crawl-row{display:flex;gap:5px;margin-bottom:5px;}
+.crawl-row input{flex:1;}
+.crawl-prog{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px;margin-top:7px;font-size:11px;display:none;}
+.crawl-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin:5px 0;}
+.crawl-bar{height:4px;background:var(--accent);border-radius:2px;transition:width .3s;width:0%;}
+.crawl-log{font-family:var(--mono);font-size:10px;color:var(--muted);max-height:75px;overflow-y:auto;line-height:1.6;}
+.cat-pills{display:flex;flex-wrap:wrap;gap:4px;padding:9px 14px;border-bottom:1px solid var(--border);}
+.pill{padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;white-space:nowrap;}
+.pill.active{border-color:currentColor;}
+.toolbar{padding:7px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;background:var(--surface);flex-wrap:wrap;}
+.rcount{font-size:11px;color:var(--muted);}
+.results-area{flex:1;overflow-y:auto;}
+.results-area::-webkit-scrollbar{width:5px;}
+.results-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:9px;color:var(--muted);padding:36px;text-align:center;}
+.empty-icon{font-size:36px;opacity:.3;}
+.empty h2{font-size:14px;color:var(--muted);font-weight:500;}
+.empty p{font-size:12px;line-height:1.6;max-width:360px;}
+.group-hdr{padding:6px 14px 3px;display:flex;align-items:center;gap:7px;position:sticky;top:0;background:var(--bg);z-index:2;border-bottom:1px solid var(--border);}
+.gdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.gtitle{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.gcount{font-size:10px;color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:10px;border:1px solid var(--border);}
+.lrow{display:flex;align-items:flex-start;gap:7px;padding:5px 14px;border-bottom:1px solid var(--border);transition:background .1s;}
+.lrow:hover{background:var(--surface);}
+.lrow input[type=checkbox]{width:auto;flex-shrink:0;margin-top:3px;accent-color:var(--accent);cursor:pointer;}
+.lbadge{font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;margin-top:2px;}
+.lurl{font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all;flex:1;line-height:1.5;cursor:pointer;}
+.lurl:hover{text-decoration:underline;}
+.lmeta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;}
+.lsrc{font-size:10px;color:var(--muted);white-space:nowrap;font-family:var(--mono);}
+.lpage{font-size:10px;color:var(--purple);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
+.cbtn{padding:2px 6px;font-size:10px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;font-family:var(--sans);transition:all .1s;white-space:nowrap;}
+.cbtn:hover{border-color:var(--accent);color:var(--accent);}
+.status-bar{padding:4px 14px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted);}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sdot.active{background:var(--green);}
+.sdot.busy{background:var(--amber);}
+.check-row{display:flex;align-items:center;gap:7px;padding:5px 14px;border-bottom:1px solid var(--border);font-size:11px;}
+.cstatus{width:36px;text-align:center;font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;flex-shrink:0;}
+.cstatus.ok{background:var(--green-dim);color:var(--green);}
+.cstatus.fail{background:var(--red-dim);color:var(--red);}
+.cstatus.pend{color:var(--muted);border:1px solid var(--border);}
+.groq-pbtn{width:100%;padding:6px 9px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;text-align:left;font-family:var(--sans);transition:all .15s;margin-bottom:4px;}
+.groq-pbtn:hover{border-color:var(--purple);color:var(--purple);}
+.groq-out{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;line-height:1.65;color:var(--text);min-height:50px;white-space:pre-wrap;word-break:break-word;}
+.dir-tree{font-family:var(--mono);font-size:12px;line-height:2;padding:10px 14px;}
+.dnode{display:flex;align-items:center;gap:6px;cursor:pointer;padding:1px 4px;border-radius:4px;}
+.dnode:hover{background:var(--surface2);}
+.dnode .dcount{font-size:10px;color:var(--muted);margin-left:auto;}
+.dchildren{padding-left:18px;border-left:1px solid var(--border);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:11px;padding:20px;width:460px;max-width:92vw;max-height:80vh;overflow-y:auto;}
+.modal h2{font-size:14px;margin-bottom:12px;}
+.modal textarea{height:110px;font-family:var(--mono);font-size:11px;resize:vertical;margin-bottom:9px;}
+.modal-act{display:flex;gap:7px;justify-content:flex-end;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">&#128279;</div>
+    <div><h1>Site Migration Scanner</h1><span>Find every link — prevent every 404</span></div>
+  </div>
+  <div class="hdr-right">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('scan')">&#128194; Scan Files</button>
+      <button class="tab" onclick="switchTab('crawl')">&#127757; Crawl Site</button>
+      <button class="tab" onclick="switchTab('check')">&#9989; 404 Checker</button>
+      <button class="tab" onclick="switchTab('tree')">&#128193; Directories</button>
+      <button class="tab" onclick="switchTab('groq')">&#129302; AI Analysis</button>
+    </div>
+    <button class="btn btn-sm btn-green" id="exportBtn" onclick="exportCSV()" style="display:none">&#8659; Export CSV</button>
+    <button class="btn btn-sm" id="exportSelBtn" onclick="exportSelected()" style="display:none">&#8659; Selected</button>
+    <button class="btn btn-sm btn-red" id="clearBtn" onclick="clearAll()" style="display:none">Clear All</button>
+  </div>
+</header>
+
+<main>
+<div class="sidebar">
+
+  <!-- SCAN sidebar -->
+  <div id="sb-scan">
+    <div class="s-sec">
+      <div class="s-lbl">Load HTML Files</div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <strong>Drop HTML files here</strong>
+        <p>Drop one or many saved pages, then click Scan</p>
+      </div>
+      <input type="file" id="fileInput" accept=".html,.htm" multiple style="display:none" onchange="stageHtmlFiles(this.files)">
+      <div class="file-list" id="stagedList"></div>
+      <div id="scanBtnWrap" style="display:none;margin-top:8px;">
+        <button class="btn btn-primary btn-sm" onclick="scanStagedFiles()" id="scanBtn">&#128269; Scan Files</button>
+        <button class="btn btn-sm" style="margin-left:4px;" onclick="clearStaged()">Clear</button>
+      </div>
+      <!-- scan progress -->
+      <div id="scanProgress" style="display:none;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span id="scanProgressTxt">Scanning...</span>
+          <span id="scanProgressCount"></span>
+        </div>
+        <div class="crawl-bar-wrap"><div class="crawl-bar" id="scanBar"></div></div>
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div style="margin-top:8px;">
+        <button class="btn btn-sm" onclick="document.getElementById('pasteModal').classList.add('open')">+ Paste HTML</button>
+      </div>
+    </div>
+    <div class="s-sec">
+      <div class="s-lbl">WordPress Backup / Export</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5;">Import a WP XML export or ZIP backup to extract every link, image, PDF and upload path — including old dated paths like <code style="font-size:10px">/uploads/2014/03/</code></p>
+      <div class="drop-zone" id="wpDropZone" onclick="document.getElementById('wpFileInput').click()">
+        <strong>Drop WP export/backup here</strong>
+        <p>.xml (WP export) &nbsp;·&nbsp; .zip (UpdraftPlus / BackupBuddy)<br>.sql database dump</p>
+      </div>
+      <input type="file" id="wpFileInput" accept=".xml,.zip,.sql,.gz,.wpress" style="display:none" onchange="stageWpFile(this.files[0])">
+      <!-- staged WP file confirmation -->
+      <div id="wpStagedWrap" style="display:none;margin-top:8px;">
+        <div style="font-size:11px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+          <div id="wpStagedName" style="font-family:var(--mono);color:var(--green);font-size:11px;margin-bottom:4px;word-break:break-all;"></div>
+          <div id="wpStagedSize" style="color:var(--muted);font-size:10px;"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="runWpScan()" id="wpScanBtn">&#128269; Scan Backup</button>
+        <button class="btn btn-sm" style="margin-left:4px;" onclick="cancelWpStage()">Cancel</button>
+      </div>
+      <!-- WP scan progress -->
+      <div id="wpProgress" style="display:none;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span id="wpProgressTxt">Scanning...</span>
+          <span id="wpProgressCount"></span>
+        </div>
+        <div class="crawl-bar-wrap"><div class="crawl-bar" id="wpBar" style="background:var(--green)"></div></div>
+      </div>
+      <div id="wpStatus" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
+    </div>
+    <div class="s-sec">
+      <div class="s-lbl">Filter</div>
+      <div class="filter-stack">
+        <input type="text" id="filterText" placeholder="Search (pdf, uploads/2014, img...)" oninput="applyFilter()">
+        <select id="filterCat" onchange="applyFilter()">
+          <option value="">All categories</option>
+          <option value="PDF">PDF files</option>
+          <option value="WP Uploads">WP Uploads</option>
+          <option value="Internal Page">Internal Pages</option>
+          <option value="Image">Images</option>
+          <option value="WordPress">WordPress (theme/plugins)</option>
+          <option value="Script/Style">Scripts &amp; Styles</option>
+          <option value="External">External links</option>
+          <option value="API/Feed">API / Feed</option>
+          <option value="Tel/Email">Tel / Email</option>
+        </select>
+        <select id="filterSrc" onchange="applyFilter()">
+          <option value="">All sources</option>
+          <option value="&lt;a href&gt;">Links &lt;a href&gt;</option>
+          <option value="&lt;img src&gt;">Images &lt;img src&gt;</option>
+          <option value="&lt;script src&gt;">Scripts</option>
+          <option value="&lt;link href&gt;">Stylesheets</option>
+          <option value="raw text">Raw / inline text</option>
+          <option value="protocol-relative">Protocol-relative (//)</option>
+          <option value="relative path">Relative paths</option>
+          <option value="JSON-LD">JSON-LD schema</option>
+          <option value="CSS url()">CSS url()</option>
+          <option value="tel/mailto">Tel / mailto</option>
+        </select>
+        <select id="filterPage" onchange="applyFilter()">
+          <option value="">All source pages</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRAWL sidebar -->
+  <div id="sb-crawl" style="display:none">
+    <div class="s-sec">
+      <div class="s-lbl">Crawl Your Live Site</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:9px;line-height:1.55;">
+        The crawler fetches every internal page automatically — finding PDFs, uploads, and paths only reachable from deep pages like <code style="font-size:10px">/category/computers/laptops/</code>.
+      </p>
+      <div class="crawl-row">
+        <input type="url" id="crawlUrl" placeholder="https://www.yoursite.com" value="https://www.totalrentalsolutions.com">
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:5px;">
+        <div style="flex:1"><label style="font-size:10px;color:var(--muted);">Max pages</label>
+          <input type="number" id="crawlMax" value="100" min="1" max="1000" style="margin-top:2px;"></div>
+        <div style="flex:1"><label style="font-size:10px;color:var(--muted);">Delay (ms)</label>
+          <input type="number" id="crawlDelay" value="400" min="100" max="5000" style="margin-top:2px;"></div>
+      </div>
+      <label style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:8px;cursor:pointer;">
+        <input type="checkbox" id="crawlSameHost" checked style="width:auto"> Same host only
+      </label>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-primary btn-sm" onclick="startCrawl()" id="crawlStartBtn">&#127757; Start Crawl</button>
+        <button class="btn btn-sm btn-red" onclick="stopCrawl()" id="crawlStopBtn" style="display:none">&#9632; Stop</button>
+      </div>
+      <div class="crawl-prog" id="crawlProg">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <span id="crawlStatusTxt">Starting...</span>
+          <span id="crawlCountTxt" style="color:var(--muted)">0 / 0</span>
+        </div>
+        <div class="crawl-bar-wrap"><div class="crawl-bar" id="crawlBar"></div></div>
+        <div class="crawl-log" id="crawlLog"></div>
+      </div>
+    </div>
+    <div class="s-sec">
+      <div class="s-lbl">Filter</div>
+      <div class="filter-stack">
+        <input type="text" id="filterText2" placeholder="Search URLs..." oninput="applyFilter()">
+        <select id="filterCat2" onchange="applyFilter()">
+          <option value="">All categories</option>
+          <option value="PDF">PDF</option>
+          <option value="WP Uploads">WP Uploads</option>
+          <option value="Internal Page">Internal Pages</option>
+          <option value="Image">Images</option>
+          <option value="External">External</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECK sidebar -->
+  <div id="sb-check" style="display:none">
+    <div class="s-sec">
+      <div class="s-lbl">404 Link Checker</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:9px;line-height:1.55;">Check every scanned URL on your new site before launch.</p>
+      <label style="font-size:10px;color:var(--muted);">New site base URL (optional)</label>
+      <input type="url" id="checkBase" placeholder="https://your-new-site.com" style="margin-bottom:5px;margin-top:3px;">
+      <p style="font-size:10px;color:var(--muted);margin-bottom:8px;">Replaces the old hostname with yours. Leave blank to check original URLs.</p>
+      <label style="font-size:10px;color:var(--muted);">Check only</label>
+      <select id="checkFilter" style="margin-top:3px;margin-bottom:8px;">
+        <option value="all">All links</option>
+        <option value="internal">Internal + uploads</option>
+        <option value="PDF">PDFs only</option>
+        <option value="WP Uploads">WP Uploads only</option>
+      </select>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-primary btn-sm" onclick="startChecking()" id="checkStartBtn">&#9989; Start Checking</button>
+        <button class="btn btn-sm btn-red" onclick="stopChecking()" id="checkStopBtn" style="display:none">&#9632; Stop</button>
+      </div>
+      <div style="margin-top:9px;font-size:11px;color:var(--muted)" id="checkStats"></div>
+    </div>
+    <div class="s-sec">
+      <div class="s-lbl">Filter Results</div>
+      <select id="checkRFilter" onchange="renderCheckResults()">
+        <option value="all">All checked</option>
+        <option value="fail">Failed only</option>
+        <option value="ok">OK only</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- TREE sidebar -->
+  <div id="sb-tree" style="display:none">
+    <div class="s-sec">
+      <div class="s-lbl">Directory Tree</div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.55;">All unique paths found. Click any folder to filter the main results.</p>
+      <label style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:8px;cursor:pointer;">
+        <input type="checkbox" id="treeInternal" checked style="width:auto" onchange="renderTree()"> Internal paths only
+      </label>
+    </div>
+  </div>
+
+  <!-- GROQ sidebar -->
+  <div id="sb-groq" style="display:none">
+    <div class="s-sec">
+      <div class="s-lbl">Groq API Key</div>
+      <div style="display:flex;gap:5px;margin-bottom:8px;">
+        <input type="password" id="groqKey" placeholder="gsk_...">
+        <button class="btn btn-sm" onclick="saveKey()">Save</button>
+      </div>
+      <select id="groqModel" style="margin-bottom:10px;">
+        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
+        <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B</option>
+        <option value="openai/gpt-oss-20b">GPT-OSS 20B</option>
+      </select>
+      <div class="s-lbl">Quick Analysis</div>
+      <button class="groq-pbtn" onclick="groqRun('summary')">&#128202; Migration summary</button>
+      <button class="groq-pbtn" onclick="groqRun('pdfs')">&#128196; All PDFs &amp; upload paths</button>
+      <button class="groq-pbtn" onclick="groqRun('404risk')">&#9888; 404 risk assessment</button>
+      <button class="groq-pbtn" onclick="groqRun('redirects')">&#8617; Suggest redirect map</button>
+      <button class="groq-pbtn" onclick="groqRun('directories')">&#128193; Directory breakdown</button>
+      <button class="groq-pbtn" onclick="groqRun('custom')">&#9997; Custom prompt...</button>
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- CONTENT -->
+<div class="content">
+  <div id="pillsBar" style="border-bottom:1px solid var(--border);background:var(--surface);">
+    <div class="cat-pills" id="catPills"></div>
+  </div>
+  <div class="toolbar" id="mainToolbar">
+    <button class="btn btn-sm" id="vgBtn" onclick="setView('grouped')">Grouped</button>
+    <button class="btn btn-sm" id="vfBtn" onclick="setView('flat')">Flat</button>
+    <span style="font-size:11px;color:var(--border2)">|</span>
+    <span class="rcount" id="rcount"></span>
+  </div>
+  <div class="results-area" id="resultsArea">
+    <div class="empty"><div class="empty-icon">&#128279;</div>
+      <h2>No data yet</h2>
+      <p>Use <strong>Scan Files</strong> to load saved HTML pages, or use <strong>Crawl Site</strong> to fetch your live site automatically — which is how you find deep links like PDFs buried on product pages.</p>
+    </div>
+  </div>
+  <div id="checkView" style="display:none;flex:1;overflow-y:auto;"></div>
+  <div id="treeView" style="display:none;flex:1;overflow-y:auto;padding:8px 0;"></div>
+  <div id="groqView" style="display:none;flex:1;overflow-y:auto;padding:14px;">
+    <div class="groq-out" id="groqOut">Load pages or crawl your site, then select an analysis.</div>
+  </div>
+  <div class="status-bar">
+    <div class="sdot" id="sdot"></div>
+    <span id="stxt">Ready</span>
+    <span id="sstats" style="margin-left:auto;"></span>
+  </div>
+</div>
+</main>
+
+<!-- Paste Modal -->
+<div class="modal-overlay" id="pasteModal">
+  <div class="modal">
+    <h2>Paste HTML Source</h2>
+    <textarea id="pasteHtml" placeholder="Paste full HTML source here..."></textarea>
+    <input type="text" id="pasteName" placeholder="Page label e.g. /category/computers/laptops/" style="margin-bottom:9px;">
+    <div class="modal-act">
+      <button class="btn" onclick="document.getElementById('pasteModal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" onclick="processPasted()">Scan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Groq Modal -->
+<div class="modal-overlay" id="customModal">
+  <div class="modal">
+    <h2>Custom AI Prompt</h2>
+    <textarea id="customPrompt" placeholder="Ask anything about the links...&#10;E.g. 'List every upload path from 2013 and 2014 that needs to be preserved'"></textarea>
+    <div class="modal-act">
+      <button class="btn" onclick="document.getElementById('customModal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" onclick="groqRunCustom()">Ask Groq</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let allLinks = [];
+let checkResults = [];
+let loadedPages = new Map();
+let selectedLinks = new Set();
+let currentHostname = '';
+let crawlRunning = false;
+let checkAbort = false;
+let currentView = 'grouped';
+let currentTab = 'scan';
+let activePillCat = 'all';
+
+// ── Category config ────────────────────────────────────────────
+const CAT = {
+  'PDF':           {c:'#f0a130',bg:'#3a2508',lbl:'PDF'},
+  'WP Uploads':    {c:'#ff6b6b',bg:'#3a1515',lbl:'UPLOAD'},
+  'Image':         {c:'#2ecc8f',bg:'#0d3326',lbl:'IMAGE'},
+  'WordPress':     {c:'#4f7bff',bg:'#1e2d5c',lbl:'WP'},
+  'Internal Page': {c:'#a67fff',bg:'#2a1f55',lbl:'PAGE'},
+  'External':      {c:'#7b80a0',bg:'#222638',lbl:'EXT'},
+  'Script/Style':  {c:'#38d4c8',bg:'#0d3330',lbl:'ASSET'},
+  'API/Feed':      {c:'#e870b0',bg:'#3a1230',lbl:'API'},
+  'Tel/Email':     {c:'#f0d060',bg:'#2e2508',lbl:'CONTACT'},
+  'Anchor':        {c:'#555870',bg:'#1a1d27',lbl:'ANCHOR'},
+  'Other':         {c:'#555870',bg:'#1a1d27',lbl:'OTHER'},
+};
+
+// ── Extraction engine ──────────────────────────────────────────
+function decodeAll(s) {
+  if (!s) return '';
+  return s.replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>')
+          .replace(/&quot;/gi,'"').replace(/&#039;/gi,"'")
+          .replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n))
+          .replace(/\\u([0-9a-fA-F]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)))
+          .replace(/\\\//g,'/');
+}
+
+function categorize(url) {
+  if (!url) return 'Other';
+  const u = url.toLowerCase();
+  if (/^(tel|mailto):/.test(u)) return 'Tel/Email';
+  if (/\.pdf(\?|#|$)/.test(u)) return 'PDF';
+  if (/\.(jpe?g|png|gif|svg|webp|ico|bmp|tiff|avif)(\?|#|$)/.test(u)) return 'Image';
+  if (/\.(css|js|woff2?|ttf|eot|otf)(\?|#|$)/.test(u)) return 'Script/Style';
+  if (/wp-json|xmlrpc|oembed|wp-sitemap|\/feed\/?$/.test(u)) return 'API/Feed';
+  if (/wp-content\/uploads/.test(u)) return 'WP Uploads';
+  if (/wp-content|wp-includes|wp-admin/.test(u)) return 'WordPress';
+  if (/^#/.test(url)) return 'Anchor';
+  const abs = url.startsWith('//') ? 'https:'+url : url;
+  if (/^https?:\/\//.test(abs)) {
+    try { if (currentHostname && new URL(abs).hostname===currentHostname) return 'Internal Page'; } catch(e){}
+    return 'External';
+  }
+  if (/^\//.test(url)||/^\.\.?\//.test(url)) return 'Internal Page';
+  return 'Other';
+}
+
+function extractLinks(html, pageName) {
+  if (!currentHostname) {
+    try {
+      const m = html.match(/rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)
+               ||html.match(/href=["']([^"']+)["'][^>]*rel=["']canonical["']/i)
+               ||html.match(/property=["']og:url["'][^>]*content=["'](https?:\/\/[^"']+)["']/i);
+      if (m) currentHostname = new URL(m[1]).hostname;
+    } catch(e){}
+  }
+  const seen = new Set();
+  const links = [];
+  function add(raw, source) {
+    if (!raw) return;
+    let url = decodeAll(raw.trim())
+      .replace(/["'<>\s]+$/,'').replace(/&quot;.*$/,'').replace(/&#\d+;.*$/,'')
+      .replace(/[.,;!?)\]]+$/,'').trim();
+    if (!url||url.length<2) return;
+    if (/^(javascript|data|void)[:;]/.test(url)) return;
+    if (url==='#') return;
+    if (url.startsWith('//')) url='https:'+url;
+    if (seen.has(url)) return;
+    seen.add(url);
+    links.push({url, source, category:categorize(url), page:pageName||'unknown'});
+  }
+
+  // Pass 1: DOM attributes
+  let doc = null;
+  try { doc = new DOMParser().parseFromString(html,'text/html'); } catch(e){}
+  if (doc) {
+    [['a[href]','href','<a href>'],['link[href]','href','<link href>'],
+     ['script[src]','src','<script src>'],['img[src]','src','<img src>'],
+     ['img[data-src]','data-src','<img data-src>'],['img[data-lazy-src]','data-lazy-src','<img lazy>'],
+     ['img[srcset]','srcset','<img srcset>'],['source[src]','src','<source>'],
+     ['source[srcset]','srcset','<source srcset>'],['video[src]','src','<video>'],
+     ['video[poster]','poster','<video poster>'],['audio[src]','src','<audio>'],
+     ['iframe[src]','src','<iframe>'],['form[action]','action','<form action>'],
+     ['object[data]','data','<object>'],['embed[src]','src','<embed>'],
+     ['[data-bg]','data-bg','data-bg'],['[data-href]','data-href','data-href'],
+     ['[data-url]','data-url','data-url'],['[data-src]','data-src','data-src'],
+    ].forEach(([sel,attr,src]) => {
+      doc.querySelectorAll(sel).forEach(el => {
+        const v = el.getAttribute(attr)||'';
+        if (attr==='srcset') v.split(',').forEach(p=>{const u=p.trim().split(/\s+/)[0];if(u)add(u,src);});
+        else add(v,src);
+      });
+    });
+    doc.querySelectorAll('meta').forEach(el=>{
+      const c=el.getAttribute('content')||'';
+      if(/^https?:\/\/|^\/\//.test(c.trim()))add(c,'<meta>');
+    });
+    doc.querySelectorAll('[style]').forEach(el=>{
+      const s=el.getAttribute('style')||'';
+      let m,re=/url\(["']?([^"')]+)["']?\)/gi;
+      while((m=re.exec(s))!==null)add(m[1],'style url()');
+    });
+    doc.querySelectorAll('style').forEach(el=>{
+      let m,re=/url\(["']?([^"')]+)["']?\)/gi;
+      while((m=re.exec(el.textContent))!==null)add(m[1],'CSS url()');
+    });
+    doc.querySelectorAll('script[type="application/ld+json"]').forEach(el=>{
+      try{walkJson(JSON.parse(el.textContent),add);}catch(e){}
+    });
+  }
+
+  // Pass 2: raw regex on decoded text
+  const decoded = decodeAll(html);
+  let m;
+
+  // Absolute URLs
+  const reAbs=/https?:\/\/[^\s"'<>()\[\]{}\\^`]+/gi;
+  while((m=reAbs.exec(decoded))!==null)
+    add(m[0].replace(/[.,;:!?)\]>"']+$/,''),'raw text');
+
+  // Protocol-relative
+  const reProto=/(?<![:/])\/\/([a-zA-Z0-9][a-zA-Z0-9\-.]+\.[a-z]{2,})(\/[^\s"'<>`]*)?/g;
+  const schemaVocab=/^\/\/schema\.org\/(Thing|ImageObject|LocalBusiness|Organization|Postal|Site|WebPage|WebSite|Bread|ListItem|Article|Product|Event|Video|Audio|Person|Place|Action)/;
+  while((m=reProto.exec(decoded))!==null){
+    const full='//'+m[1]+(m[2]||'');
+    if(!schemaVocab.test(full))add(full,'protocol-relative');
+  }
+
+  // Root-relative paths
+  if (currentHostname) {
+    const reRel=/(?:href|src|action|data-href|data-src|data-url|content)=["'](\/[^"'<>\s?#][^"'<>\s]*)["']/gi;
+    while((m=reRel.exec(html))!==null)add(m[1],'relative path');
+  }
+
+  // tel/mailto
+  const reTel=/(?:href|content)=["']((?:tel|mailto):[^"'<>\s]+)["']/gi;
+  while((m=reTel.exec(html))!==null)add(m[1],'tel/mailto');
+
+  // &quot;-encoded in script blocks
+  const reQ=/&quot;(https?:\/\/[^&\s<>"]+)&quot;/gi;
+  while((m=reQ.exec(html))!==null)add(m[1],'JS string');
+
+  // sameAs arrays
+  const reSA=/"sameAs"\s*:\s*\[([^\]]+)\]/gi;
+  while((m=reSA.exec(decoded))!==null)
+    m[1].replace(/"([^"]+)"/g,(_,u)=>add(u,'JSON-LD sameAs'));
+
+  return links;
+}
+
+function walkJson(obj,add,d=0){
+  if(d>12||!obj)return;
+  if(typeof obj==='string'){if(/^https?:\/\//.test(obj)||obj.startsWith('//'))add(obj,'JSON-LD');return;}
+  if(Array.isArray(obj)){obj.forEach(v=>walkJson(v,add,d+1));return;}
+  if(typeof obj==='object')Object.values(obj).forEach(v=>walkJson(v,add,d+1));
+}
+
+// ── File loading ───────────────────────────────────────────────
+let stagedFiles = [];
+
+function stageHtmlFiles(files){
+  Array.from(files).forEach(f=>{
+    if(!stagedFiles.find(s=>s.name===f.name)) stagedFiles.push(f);
+  });
+  renderStagedList();
+}
+
+function renderStagedList(){
+  const list = document.getElementById('stagedList');
+  const wrap = document.getElementById('scanBtnWrap');
+  if(!stagedFiles.length){ list.innerHTML=''; wrap.style.display='none'; return; }
+  wrap.style.display='';
+  list.innerHTML = stagedFiles.map((f,i)=>
+    `<div class="file-chip">
+      <span title="${f.name}">${f.name}</span>
+      <span style="flex-shrink:0;opacity:.6">(${(f.size/1024).toFixed(0)}KB)</span>
+      <button onclick="removeStagedFile(${i})" title="Remove">×</button>
+    </div>`
+  ).join('');
+}
+
+function removeStagedFile(i){
+  stagedFiles.splice(i,1);
+  renderStagedList();
+}
+
+function clearStaged(){
+  stagedFiles=[];
+  renderStagedList();
+}
+
+async function scanStagedFiles(){
+  if(!stagedFiles.length) return;
+  const btn = document.getElementById('scanBtn');
+  const prog = document.getElementById('scanProgress');
+  const bar = document.getElementById('scanBar');
+  const txt = document.getElementById('scanProgressTxt');
+  const cnt = document.getElementById('scanProgressCount');
+
+  btn.disabled=true;
+  prog.style.display='block';
+  setStatus('busy');
+
+  const total = stagedFiles.length;
+  for(let i=0; i<total; i++){
+    const file = stagedFiles[i];
+    txt.textContent = 'Scanning: '+file.name;
+    cnt.textContent = (i+1)+' / '+total;
+    bar.style.width = Math.round(((i+1)/total)*100)+'%';
+
+    await new Promise(resolve=>{
+      if(loadedPages.has(file.name)){ resolve(); return; }
+      const r=new FileReader();
+      r.onload=e=>{
+        loadedPages.set(file.name,true);
+        const nl=extractLinks(e.target.result,file.name);
+        mergeLinks(nl);
+        addChip(file.name,nl.length);
+        updatePageSel();
+        applyFilter();
+        resolve();
+      };
+      r.onerror=()=>resolve();
+      r.readAsText(file);
+    });
+  }
+
+  // Done
+  txt.textContent = 'Done — '+total+' file'+(total>1?'s':'')+' scanned';
+  bar.style.width='100%';
+  bar.style.background='var(--green)';
+  stagedFiles=[];
+  renderStagedList();
+  setTimeout(()=>{ prog.style.display='none'; bar.style.background=''; bar.style.width='0%'; },3000);
+  btn.disabled=false;
+  setStatus('done');
+  showControls();
+}
+
+// Keep old handleFiles for drag-drop (stages then auto-shows button, no auto-scan)
+function handleFiles(files){ stageHtmlFiles(files); }
+
+function processPasted(){
+  const html=document.getElementById('pasteHtml').value.trim();
+  const name=document.getElementById('pasteName').value.trim()||'pasted-'+Date.now();
+  if(!html)return;
+  document.getElementById('pasteModal').classList.remove('open');
+  if(loadedPages.has(name)){alert('Already loaded: '+name);return;}
+  loadedPages.set(name,true);
+  const nl=extractLinks(html,name);
+  mergeLinks(nl);
+  addChip(name,nl.length);
+  setStatus('done');showControls();applyFilter();updatePageSel();
+  document.getElementById('pasteHtml').value='';
+  document.getElementById('pasteName').value='';
+}
+
+// ── WordPress backup / export handler ─────────────────────────
+let stagedWpFile = null;
+
+function wpStatus(msg,color){
+  const el=document.getElementById('wpStatus');
+  el.textContent=msg; el.style.color=color||'var(--muted)';
+}
+
+function wpProgress(msg, pct, countMsg){
+  document.getElementById('wpProgressTxt').textContent = msg||'';
+  document.getElementById('wpProgressCount').textContent = countMsg||'';
+  document.getElementById('wpBar').style.width = (pct||0)+'%';
+}
+
+function stageWpFile(file){
+  if(!file) return;
+  stagedWpFile = file;
+  const mb = (file.size/1024/1024).toFixed(1);
+  const kb = (file.size/1024).toFixed(0);
+  const sizeLabel = file.size > 1024*1024 ? mb+' MB' : kb+' KB';
+  document.getElementById('wpStagedName').textContent = file.name;
+  document.getElementById('wpStagedSize').textContent = sizeLabel + ' · ' + file.type;
+  document.getElementById('wpStagedWrap').style.display = '';
+  document.getElementById('wpProgress').style.display = 'none';
+  wpStatus('');
+}
+
+function cancelWpStage(){
+  stagedWpFile = null;
+  document.getElementById('wpStagedWrap').style.display='none';
+  document.getElementById('wpFileInput').value='';
+  wpStatus('');
+}
+
+async function runWpScan(){
+  if(!stagedWpFile) return;
+  const file = stagedWpFile;
+  const name = file.name;
+
+  document.getElementById('wpStagedWrap').style.display='none';
+  document.getElementById('wpProgress').style.display='block';
+  document.getElementById('wpBar').style.background='var(--green)';
+  wpProgress('Starting scan...', 5);
+  wpStatus('');
+  setStatus('busy');
+
+  try{
+    if(name.endsWith('.xml')){
+      wpProgress('Reading XML file...', 10);
+      const text=await readFileText(file);
+      wpProgress('Parsing WordPress export...', 30);
+      await processWpXml(text,name);
+    } else if(name.endsWith('.sql')){
+      wpProgress('Reading SQL dump...', 10);
+      const text=await readFileText(file);
+      wpProgress('Scanning database for URLs...', 40);
+      processWpSql(text,name);
+    } else if(name.endsWith('.zip')){
+      await processWpZip(file,name);
+    } else if(name.endsWith('.gz')){
+      wpStatus('For .gz files: extract first, then drop the .sql or .xml here.','var(--amber)');
+      document.getElementById('wpProgress').style.display='none';
+      setStatus('done'); return;
+    } else if(name.endsWith('.wpress')){
+      wpStatus('All-in-One WP .wpress: extract via File Manager and export the DB as .sql, then drop that here.','var(--muted)');
+      document.getElementById('wpProgress').style.display='none';
+      setStatus('done'); return;
+    } else {
+      wpStatus('Unrecognized format. Try .xml, .sql, or .zip.','var(--red)');
+      document.getElementById('wpProgress').style.display='none';
+      setStatus('done'); return;
+    }
+  } catch(e){
+    wpStatus('Error: '+e.message,'var(--red)');
+    document.getElementById('wpProgress').style.display='none';
+    setStatus('done');
+  }
+
+  wpProgress('Complete', 100);
+  setTimeout(()=>{ document.getElementById('wpProgress').style.display='none'; },3000);
+  stagedWpFile=null;
+}
+
+async function handleWpFile(file){ stageWpFile(file); }
+
+function readFileText(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=()=>rej(new Error('Could not read file'));
+    r.readAsText(file);
+  });
+}
+
+function readFileArrayBuffer(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=()=>rej(new Error('Could not read file'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+// WP XML export (WordPress eXtended RSS / WXR)
+async function processWpXml(text,fname){
+  const links=[];
+  const seen=new Set();
+
+  function addLink(raw,source,page){
+    if(!raw)return;
+    let url=decodeAll(raw.trim()).replace(/["'<>\s]+$/,'').replace(/[.,;]+$/,'').trim();
+    if(!url||url.length<4)return;
+    if(/^(javascript|data):/.test(url))return;
+    if(seen.has(url))return;
+    seen.add(url);
+    links.push({url,source,category:categorize(url),page:page||fname});
+  }
+
+  // Parse as XML first
+  try{
+    const parser=new DOMParser();
+    const doc=parser.parseFromString(text,'text/xml');
+
+    const items=doc.querySelectorAll('item');
+    wpProgress('Parsing '+items.length+' posts/pages/attachments...', 40, '0 / '+items.length);
+
+    items.forEach((item,idx)=>{
+      if(idx%50===0) wpProgress('Processing items...', 40+Math.round((idx/items.length)*40), idx+' / '+items.length);
+
+      const title=item.querySelector('title')?.textContent||'';
+      const link=item.querySelector('link')?.textContent||'';
+      const guid=item.querySelector('guid')?.textContent||'';
+
+      if(link)addLink(link,'WP post/page link',title||link);
+      if(guid)addLink(guid,'WP guid',title||link);
+
+      item.querySelectorAll('postmeta').forEach(meta=>{
+        const key=meta.querySelector('meta_key')?.textContent||'';
+        const val=meta.querySelector('meta_value')?.textContent||'';
+        if(key==='_wp_attachment_url'||key==='attachment_url')addLink(val,'WP attachment_url',title);
+        if(key==='_wp_attached_file'){
+          if(val&&!val.startsWith('http'))addLink('/wp-content/uploads/'+val,'WP attached_file',title);
+          else addLink(val,'WP attached_file',title);
+        }
+      });
+
+      const contentEl=item.getElementsByTagNameNS('http://purl.org/rss/1.0/modules/content/','encoded')[0];
+      const content=contentEl?.textContent||item.querySelector('content_encoded')?.textContent||'';
+      if(content){
+        const contentLinks=extractLinks(content, title||link||fname);
+        contentLinks.forEach(l=>{if(!seen.has(l.url)){seen.add(l.url);links.push(l);}});
+      }
+    });
+
+    const siteUrl=doc.querySelector('base_site_url')?.textContent||
+                  doc.getElementsByTagNameNS('http://wordpress.org/export/1.2/','base_site_url')[0]?.textContent||'';
+    if(siteUrl){try{currentHostname=new URL(siteUrl).hostname;}catch(e){}}
+
+  }catch(xmlErr){
+    console.warn('XML parse failed, using regex fallback',xmlErr);
+  }
+
+  wpProgress('Running deep URL scan...', 85);
+  const rawLinks=extractLinks(text,fname);
+  rawLinks.forEach(l=>{if(!seen.has(l.url)){seen.add(l.url);links.push(l);}});
+
+  wpProgress('Scanning for dated upload paths...', 93);
+  const reUpload=/wp-content\/uploads\/(\d{4}\/\d{2}\/[^"'<>\s]+)/g;
+  let m;
+  while((m=reUpload.exec(text))!==null){
+    const url=currentHostname?'https://'+currentHostname+'/'+m[0]:'/'+m[0];
+    if(!seen.has(url)){seen.add(url);links.push({url,source:'WP upload path',category:categorize(url),page:fname});}
+  }
+
+  mergeLinks(links);
+  addChip(fname+' (WP XML)',links.length);
+  wpStatus('✓ '+links.length+' links extracted from WP export','var(--green)');
+  setStatus('done');showControls();applyFilter();updatePageSel();
+}
+
+// SQL database dump
+function processWpSql(text,fname){
+  const links=[];
+  const seen=new Set();
+  function add(url,src){
+    if(!url||seen.has(url))return;
+    seen.add(url);
+    links.push({url,source:src,category:categorize(url),page:fname});
+  }
+
+  // wp-content/uploads paths in INSERT statements
+  wpProgress('Scanning for upload paths...', 50);
+  const reUpload=/wp-content\/uploads\/[^\\'",\s<>)]+/g;
+  let m;
+  while((m=reUpload.exec(text))!==null){
+    const path='/'+m[0].replace(/\\+$/,'').replace(/[.,;]+$/,'');
+    const url=currentHostname?'https://'+currentHostname+path:path;
+    add(url,'SQL upload path');
+  }
+
+  wpProgress('Scanning for absolute URLs...', 75);
+  // Full URLs in SQL
+  const reAbs=/https?:\/\/[^\\'",\s<>)]{6,}/g;
+  while((m=reAbs.exec(text))!==null){
+    add(m[0].replace(/[.,;\\]+$/,''),'SQL raw URL');
+  }
+
+  // Detect site hostname from SQL
+  const siteM=text.match(/INSERT[^;]*siteurl[^;]*'(https?:\/\/[^']+)'/i);
+  if(siteM){try{currentHostname=new URL(siteM[1]).hostname;}catch(e){}}
+
+  mergeLinks(links);
+  addChip(fname+' (SQL)',links.length);
+  wpStatus('✓ '+links.length+' paths extracted from SQL dump','var(--green)');
+  setStatus('done');showControls();applyFilter();updatePageSel();
+}
+
+// ZIP backup — uses JSZip from CDN
+async function processWpZip(file,fname){
+  wpProgress('Loading ZIP library...', 8);
+
+  // Dynamically load JSZip
+  await new Promise((res,rej)=>{
+    if(window.JSZip){res();return;}
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload=res;s.onerror=()=>rej(new Error('Failed to load JSZip'));
+    document.head.appendChild(s);
+  });
+
+  wpProgress('Unzipping backup file...', 15);
+  const buf=await readFileArrayBuffer(file);
+  const zip=await JSZip.loadAsync(buf);
+
+  const links=[];
+  const seen=new Set();
+  function add(url,src,page){
+    if(!url||seen.has(url))return;
+    seen.add(url);
+    links.push({url,source:src,category:categorize(url),page:page||fname});
+  }
+
+  const allFiles=Object.keys(zip.files).filter(k=>!zip.files[k].dir);
+  const totalFiles=allFiles.length;
+  wpProgress('Found '+totalFiles+' files in ZIP', 20, '0 / '+totalFiles);
+
+  let processed=0;
+  for(const zipPath of allFiles){
+    const zipFile=zip.files[zipPath];
+    const lower=zipPath.toLowerCase();
+    processed++;
+
+    if(processed%10===0||processed===totalFiles){
+      const pct=20+Math.round((processed/totalFiles)*75);
+      wpProgress('Scanning: '+zipPath.split('/').pop(), pct, processed+' / '+totalFiles);
+      await new Promise(r=>setTimeout(r,0)); // yield to UI
+    }
+
+    // Record every upload file path directly from the ZIP listing
+    if(lower.includes('wp-content/uploads/')||lower.includes('wp-content\\uploads\\')){
+      const cleanPath='/'+zipPath.replace(/\\/g,'/').replace(/^\/+/,'');
+      const url=currentHostname?'https://'+currentHostname+cleanPath:cleanPath;
+      add(url,'ZIP file path',zipPath);
+    }
+
+    // Parse text-based files for links
+    if(/\.(html?|xml|sql|php|css|js)$/.test(lower)){
+      try{
+        const text=await zipFile.async('string');
+
+        if(lower.endsWith('.xml')&&(text.includes('<wp:wxr_version')||text.includes('wordpress.org/export'))){
+          await processWpXml(text,zipPath);
+          continue;
+        }
+        if(lower.endsWith('.sql')){
+          processWpSql(text,zipPath);
+          continue;
+        }
+
+        const pageLinks=extractLinks(text,zipPath);
+        pageLinks.forEach(l=>{if(!seen.has(l.url)){seen.add(l.url);links.push(l);}});
+
+        const reUp=/wp-content\/uploads\/[^\\'",\s<>)]+/g;
+        let m2;
+        while((m2=reUp.exec(text))!==null){
+          const path='/'+m2[0].replace(/[.,;\\]+$/,'');
+          const url=currentHostname?'https://'+currentHostname+path:path;
+          add(url,'ZIP upload path',zipPath);
+        }
+      }catch(e){}
+    }
+  }
+
+  mergeLinks(links);
+  addChip(fname+' (ZIP)',links.length);
+  wpStatus('✓ '+links.length+' links extracted from ZIP backup','var(--green)');
+  setStatus('done');showControls();applyFilter();updatePageSel();
+}
+
+function mergeLinks(nl){
+  const ex=new Set(allLinks.map(l=>l.url));
+  nl.forEach(l=>{if(!ex.has(l.url))allLinks.push(l);});
+  document.getElementById('sstats').textContent=allLinks.length+' total links';
+}
+
+function addChip(name,count){
+  const list=document.getElementById('fileList');
+  const d=document.createElement('div');d.className='file-chip';
+  d.innerHTML=`<span title="${name}">${name}</span><span style="flex-shrink:0;opacity:.6">(${count})</span><button onclick="removeFile('${CSS.escape(name)}',this)">×</button>`;
+  list.appendChild(d);
+}
+
+function removeFile(name,btn){
+  loadedPages.delete(name);
+  allLinks=allLinks.filter(l=>l.page!==name);
+  btn.parentElement.remove();
+  applyFilter();
+  document.getElementById('sstats').textContent=allLinks.length+' total links';
+}
+
+function updatePageSel(){
+  const sel=document.getElementById('filterPage');
+  const pages=[...new Set(allLinks.map(l=>l.page))].sort();
+  sel.innerHTML='<option value="">All source pages</option>';
+  pages.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
+}
+
+// ── Crawler ───────────────────────────────────────────────────
+const PROXY='https://api.allorigins.win/raw?url=';
+
+async function startCrawl(){
+  const startUrl=document.getElementById('crawlUrl').value.trim();
+  if(!startUrl){alert('Enter a site URL');return;}
+  try{currentHostname=new URL(startUrl).hostname;}catch(e){alert('Invalid URL');return;}
+  const maxP=parseInt(document.getElementById('crawlMax').value)||100;
+  const delay=parseInt(document.getElementById('crawlDelay').value)||400;
+  const sameHost=document.getElementById('crawlSameHost').checked;
+
+  const queue=[startUrl];
+  const visited=new Set();
+  crawlRunning=true;
+
+  document.getElementById('crawlStartBtn').style.display='none';
+  document.getElementById('crawlStopBtn').style.display='';
+  const prog=document.getElementById('crawlProg');
+  prog.style.display='block';
+  const logEl=document.getElementById('crawlLog');
+  logEl.textContent='';
+
+  function log(msg){logEl.textContent=msg+'\n'+logEl.textContent;}
+  function updateBar(){
+    const pct=Math.min(100,(visited.size/maxP)*100);
+    document.getElementById('crawlBar').style.width=pct+'%';
+    document.getElementById('crawlCountTxt').textContent=visited.size+' / '+maxP;
+    document.getElementById('crawlStatusTxt').textContent=crawlRunning?'Crawling...':'Done';
+  }
+
+  while(queue.length>0&&visited.size<maxP&&crawlRunning){
+    const url=queue.shift();
+    if(visited.has(url))continue;
+    visited.add(url);
+    updateBar();
+    log('Fetching: '+url);
+    setStatus('busy');
+    try{
+      const res=await fetch(PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(12000)});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      const html=await res.text();
+      const pl=extractLinks(html,url);
+      mergeLinks(pl);
+      // Queue new internal pages — strip fragments, skip already-seen paths
+      const pathVisited=new Set([...visited].map(u=>{try{const x=new URL(u);return x.hostname+x.pathname;}catch(e){return u;}}));
+      pl.filter(l=>l.category==='Internal Page').forEach(l=>{
+        let abs=l.url;
+        if(abs.startsWith('/'))abs='https://'+currentHostname+abs;
+        try{
+          const parsed=new URL(abs);
+          // Skip fragment-only variants (#organizationLogo etc) and WP internal ?p= links
+          if(parsed.hash&&!parsed.pathname||/[?&]p=\d+$/.test(parsed.search)) return;
+          // Normalize: strip fragment, keep path+query
+          parsed.hash='';
+          abs=parsed.toString();
+          const pathKey=parsed.hostname+parsed.pathname;
+          if(sameHost&&parsed.hostname!==currentHostname)return;
+          if(pathVisited.has(pathKey))return;
+          if(!visited.has(abs)&&!queue.includes(abs))queue.push(abs);
+        }catch(e){}
+      });
+      log('  → '+pl.length+' links found');
+      showControls();applyFilter();
+      if(currentTab==='tree')renderTree();
+    }catch(e){log('  ✗ '+e.message);}
+    await new Promise(r=>setTimeout(r,delay));
+  }
+  crawlRunning=false;
+  document.getElementById('crawlStartBtn').style.display='';
+  document.getElementById('crawlStopBtn').style.display='none';
+  document.getElementById('crawlStatusTxt').textContent='Done — '+visited.size+' pages crawled';
+  setStatus('done');updateBar();
+}
+
+function stopCrawl(){crawlRunning=false;}
+
+// ── 404 checker ───────────────────────────────────────────────
+async function startChecking(){
+  if(!allLinks.length){alert('No links yet — load files or crawl first.');return;}
+  const base=document.getElementById('checkBase').value.trim();
+  const typeF=document.getElementById('checkFilter').value;
+
+  let toCheck=allLinks.filter(l=>{
+    if(typeF==='internal')return['Internal Page','WP Uploads','WordPress','PDF'].includes(l.category);
+    if(typeF==='all')return true;
+    return l.category===typeF;
+  });
+  const seen=new Set();
+  toCheck=toCheck.filter(l=>{if(seen.has(l.url))return false;seen.add(l.url);return true;});
+
+  checkResults=[];checkAbort=false;checkRunning=true;
+  document.getElementById('checkStartBtn').style.display='none';
+  document.getElementById('checkStopBtn').style.display='';
+  document.getElementById('checkStats').textContent='Checking 0 / '+toCheck.length+'...';
+
+  for(let i=0;i<toCheck.length&&!checkAbort;i++){
+    let url=toCheck[i].url;
+    if(base){
+      try{
+        const u=new URL(url.startsWith('//')?'https:'+url:url);
+        if(u.hostname===currentHostname)url=base.replace(/\/$/,'')+u.pathname+u.search;
+      }catch(e){}
+    }
+    document.getElementById('checkStats').textContent='Checking '+(i+1)+' / '+toCheck.length+'...';
+    try{
+      const res=await fetch(PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(9000)});
+      checkResults.push({url,status:res.status,ok:res.status<400,orig:toCheck[i].url});
+    }catch(e){
+      checkResults.push({url,status:'ERR',ok:false,orig:toCheck[i].url,err:e.message});
+    }
+    renderCheckResults();
+    await new Promise(r=>setTimeout(r,150));
+  }
+  checkRunning=false;checkAbort=false;
+  document.getElementById('checkStartBtn').style.display='';
+  document.getElementById('checkStopBtn').style.display='none';
+  const fails=checkResults.filter(r=>!r.ok).length;
+  document.getElementById('checkStats').textContent='Done. '+checkResults.length+' checked, '+fails+' failed.';
+}
+
+function stopChecking(){checkAbort=true;}
+
+function renderCheckResults(){
+  const view=document.getElementById('checkView');
+  const filt=document.getElementById('checkRFilter').value;
+  let rows=checkResults.filter(r=>filt==='fail'?!r.ok:filt==='ok'?r.ok:true);
+  if(!rows.length){
+    view.innerHTML='<div class="empty"><div class="empty-icon">&#9989;</div><h2>No results yet</h2><p>Click Start Checking above.</p></div>';
+    return;
+  }
+  view.innerHTML=rows.map(r=>{
+    const cls=r.ok?'ok':'fail';
+    const lbl=r.ok?''+r.status:''+r.status;
+    const short=r.url.length>80?r.url.slice(0,78)+'…':r.url;
+    const safe=r.url.replace(/'/g,"\\'");
+    return `<div class="check-row">
+      <div class="cstatus ${cls}">${lbl}</div>
+      <span style="font-family:var(--mono);font-size:11px;color:${r.ok?'var(--text)':'var(--red)'};word-break:break-all;flex:1" title="${r.url}">${short}</span>
+      <button class="cbtn" onclick="copyText('${safe}',this)">copy</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Directory tree ────────────────────────────────────────────
+function renderTree(){
+  const view=document.getElementById('treeView');
+  const intOnly=document.getElementById('treeInternal').checked;
+  const pathCounts={};
+
+  allLinks.forEach(l=>{
+    if(intOnly&&l.category==='External')return;
+    let pathname='';
+    try{
+      const raw=l.url.startsWith('//')?'https:'+l.url:l.url;
+      if(/^https?:\/\//.test(raw))pathname=new URL(raw).pathname;
+      else if(l.url.startsWith('/'))pathname=l.url.split('?')[0];
+      else return;
+    }catch(e){return;}
+    const parts=pathname.split('/').filter(Boolean);
+    for(let i=0;i<=parts.length;i++){
+      const p='/'+parts.slice(0,i).join('/')+(i<parts.length?'/':'');
+      pathCounts[p]=(pathCounts[p]||0)+1;
+    }
+  });
+
+  function buildTree(paths){
+    const root={children:{},count:0};
+    Object.entries(paths).forEach(([p,c])=>{
+      const parts=p.split('/').filter(Boolean);
+      let node=root;
+      parts.forEach((part,i)=>{
+        if(!node.children[part])node.children[part]={children:{},count:0,path:'/'+parts.slice(0,i+1).join('/')+'/'};
+        node=node.children[part];
+        if(i===parts.length-1)node.count=c;
+      });
+    });
+    return root;
+  }
+
+  function renderNode(node){
+    return Object.entries(node.children).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,child])=>{
+      const hasC=Object.keys(child.children).length>0;
+      const id='d'+Math.random().toString(36).slice(2);
+      const spath=child.path.replace(/'/g,"\\'");
+      let h=`<div class="dnode" onclick="event.stopPropagation();${hasC?`toggleDir('${id}')`:''}; filterByDir('${spath}')">`;
+      h+=`<span style="color:${hasC?'var(--amber)':'var(--muted)'};font-size:11px">${hasC?'▶':' '}</span>`;
+      h+=`<span style="color:var(--teal)">/${name}</span>`;
+      if(child.count)h+=`<span class="dcount">${child.count}</span>`;
+      h+='</div>';
+      if(hasC)h+=`<div class="dchildren" id="${id}" style="display:none">${renderNode(child)}</div>`;
+      return h;
+    }).join('');
+  }
+
+  const tree=buildTree(pathCounts);
+  view.innerHTML='<div class="dir-tree">'+renderNode(tree)+'</div>';
+}
+
+function toggleDir(id){
+  const el=document.getElementById(id);if(!el)return;
+  const prev=el.previousElementSibling?.querySelector('span');
+  if(el.style.display==='none'){el.style.display='block';if(prev)prev.textContent='▼';}
+  else{el.style.display='none';if(prev)prev.textContent='▶';}
+}
+
+function filterByDir(path){
+  switchTab('scan');
+  document.getElementById('filterText').value=path;
+  applyFilter();
+}
+
+// ── Filter + render ───────────────────────────────────────────
+function getFiltered(){
+  const t1=(document.getElementById('filterText')||{value:''}).value.toLowerCase();
+  const t2=(document.getElementById('filterText2')||{value:''}).value.toLowerCase();
+  const srch=t1||t2;
+  const cat1=(document.getElementById('filterCat')||{value:''}).value;
+  const cat2=(document.getElementById('filterCat2')||{value:''}).value;
+  const cat=cat1||cat2;
+  const src=(document.getElementById('filterSrc')||{value:''}).value;
+  const page=(document.getElementById('filterPage')||{value:''}).value;
+  return allLinks.filter(l=>{
+    const tOk=!srch||l.url.toLowerCase().includes(srch)||l.page.toLowerCase().includes(srch);
+    const cOk=!cat||l.category===cat;
+    const sOk=!src||l.source===src;
+    const pOk=!page||l.page===page;
+    const pillOk=activePillCat==='all'||l.category===activePillCat;
+    return tOk&&cOk&&sOk&&pOk&&pillOk;
+  });
+}
+
+function applyFilter(){
+  const filtered=getFiltered();
+  renderPills();
+  renderResults(filtered);
+  document.getElementById('rcount').textContent=
+    filtered.length!==allLinks.length?filtered.length+' of '+allLinks.length:allLinks.length+' links';
+}
+
+function renderPills(){
+  const counts={};
+  allLinks.forEach(l=>counts[l.category]=(counts[l.category]||0)+1);
+  const el=document.getElementById('catPills');
+  let h=`<span class="pill ${activePillCat==='all'?'active':''}" data-cat="all" style="color:var(--muted);background:var(--surface2)" onclick="setPill('all')">All ${allLinks.length}</span>`;
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([cat,n])=>{
+    const c=CAT[cat]||CAT.Other;
+    h+=`<span class="pill ${activePillCat===cat?'active':''}" data-cat="${cat}" style="color:${c.c};background:${c.bg}" onclick="setPill('${cat}')">${c.lbl} ${n}</span>`;
+  });
+  el.innerHTML=h;
+}
+
+function setPill(cat){
+  activePillCat=cat;
+  renderPills();
+  const filtered=getFiltered();
+  renderResults(filtered);
+  document.getElementById('rcount').textContent=
+    filtered.length!==allLinks.length?filtered.length+' of '+allLinks.length:allLinks.length+' links';
+}
+
+function renderResults(filtered){
+  const area=document.getElementById('resultsArea');
+  if(!allLinks.length){
+    area.innerHTML='<div class="empty"><div class="empty-icon">&#128279;</div><h2>No data yet</h2><p>Use Scan Files or Crawl Site. The Crawl tab is how you find PDFs buried on subpages — it fetches every page automatically.</p></div>';
+    return;
+  }
+  if(!filtered.length){
+    area.innerHTML='<div class="empty"><div class="empty-icon">&#128269;</div><h2>No matches</h2><p>Try clearing your filters.</p></div>';
+    return;
+  }
+
+  let html=`<div style="padding:5px 14px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);">
+    <input type="checkbox" id="selAll" style="width:auto;accent-color:var(--accent);cursor:pointer" onchange="toggleSelAll(this)">
+    <label for="selAll" style="cursor:pointer">Select all visible (${filtered.length})</label>
+  </div>`;
+
+  if(currentView==='grouped'){
+    const groups={};
+    filtered.forEach(l=>{(groups[l.category]=groups[l.category]||[]).push(l);});
+    Object.entries(groups).sort((a,b)=>b[1].length-a[1].length).forEach(([cat,items])=>{
+      const c=CAT[cat]||CAT.Other;
+      html+=`<div class="group-hdr"><div class="gdot" style="background:${c.c}"></div><span class="gtitle" style="color:${c.c}">${cat}</span><span class="gcount">${items.length}</span></div>`;
+      items.forEach(l=>{html+=rowHtml(l);});
+    });
+  } else {
+    filtered.forEach(l=>{html+=rowHtml(l);});
+  }
+
+  area.innerHTML=html;
+  document.getElementById('selAll').addEventListener('change',function(){
+    filtered.forEach(l=>{const i=allLinks.indexOf(l);this.checked?selectedLinks.add(i):selectedLinks.delete(i);});
+    area.querySelectorAll('.rchk').forEach(c=>c.checked=this.checked);
+  });
+}
+
+function rowHtml(l){
+  const idx=allLinks.indexOf(l);
+  const c=CAT[l.category]||CAT.Other;
+  const short=l.url.length>88?l.url.slice(0,86)+'…':l.url;
+  const chk=selectedLinks.has(idx)?'checked':'';
+  const safe=l.url.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  const pageLabel=l.page&&l.page!=='unknown'?l.page.split('/').filter(Boolean).slice(-2).join('/'):'';
+  return `<div class="lrow">
+    <input type="checkbox" class="rchk" ${chk} style="width:auto;accent-color:var(--accent)" onchange="toggleRow(this,${idx})">
+    <span class="lbadge" style="color:${c.c};background:${c.bg}">${c.lbl}</span>
+    <span class="lurl" title="${l.url}" onclick="copyText('${safe}',this)">${short}</span>
+    <div class="lmeta">
+      <span class="lsrc">${l.source}</span>
+      ${pageLabel?`<span class="lpage" title="${l.page}">${pageLabel}</span>`:''}
+    </div>
+    <button class="cbtn" onclick="copyText('${safe}',this)">copy</button>
+  </div>`;
+}
+
+function toggleRow(cb,idx){cb.checked?selectedLinks.add(idx):selectedLinks.delete(idx);}
+function toggleSelAll(cb){
+  getFiltered().forEach(l=>{const i=allLinks.indexOf(l);cb.checked?selectedLinks.add(i):selectedLinks.delete(i);});
+  document.querySelectorAll('.rchk').forEach(c=>c.checked=cb.checked);
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  const tabs=['scan','crawl','check','tree','groq'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
+  tabs.forEach(t=>{const el=document.getElementById('sb-'+t);if(el)el.style.display=t===tab?'':'none';});
+  const isRes=tab==='scan'||tab==='crawl';
+  document.getElementById('resultsArea').style.display=isRes?'':'none';
+  document.getElementById('checkView').style.display=tab==='check'?'block':'none';
+  document.getElementById('treeView').style.display=tab==='tree'?'block':'none';
+  document.getElementById('groqView').style.display=tab==='groq'?'block':'none';
+  document.getElementById('pillsBar').style.display=isRes?'':'none';
+  document.getElementById('mainToolbar').style.display=isRes?'':'none';
+  if(tab==='tree')renderTree();
+  if(tab==='check')renderCheckResults();
+}
+
+function setView(v){
+  currentView=v;
+  ['grouped','flat'].forEach(x=>{
+    const id='v'+(x==='grouped'?'g':'f')+'Btn';
+    const btn=document.getElementById(id);
+    if(btn){btn.style.background=v===x?'var(--accent-dim)':'';btn.style.borderColor=v===x?'var(--accent)':'';}
+  });
+  applyFilter();
+}
+
+// ── Export ────────────────────────────────────────────────────
+function exportCSV(){downloadCSV(getFiltered(),'migration_links.csv');}
+function exportSelected(){
+  const sel=[...selectedLinks].map(i=>allLinks[i]).filter(Boolean);
+  if(!sel.length){alert('No links selected.');return;}
+  downloadCSV(sel,'selected_links.csv');
+}
+function downloadCSV(items,fname){
+  const rows=[['URL','Category','Source','Found On Page']];
+  items.forEach(l=>rows.push(['"'+l.url.replace(/"/g,'""')+'"',l.category,l.source,l.page||'']));
+  const blob=new Blob([rows.map(r=>r.join(',')).join('\r\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function copyText(url,el){
+  navigator.clipboard.writeText(url).then(()=>{
+    const orig=el.textContent;el.textContent='copied!';
+    setTimeout(()=>el.textContent=orig,1200);
+  });
+}
+function showControls(){['exportBtn','exportSelBtn','clearBtn'].forEach(id=>document.getElementById(id).style.display='');}
+function setStatus(s){
+  const d=document.getElementById('sdot'),t=document.getElementById('stxt');
+  if(s==='busy'){d.className='sdot busy';t.textContent='Working...';}
+  else if(s==='done'){d.className='sdot active';t.textContent='Ready';}
+  else{d.className='sdot';t.textContent='Ready';}
+}
+function clearAll(){
+  allLinks=[];selectedLinks.clear();loadedPages.clear();currentHostname='';checkResults=[];
+  document.getElementById('fileList').innerHTML='';
+  document.getElementById('catPills').innerHTML='';
+  document.getElementById('rcount').textContent='';
+  document.getElementById('sstats').textContent='';
+  document.getElementById('filterText').value='';
+  ['exportBtn','exportSelBtn','clearBtn'].forEach(id=>document.getElementById(id).style.display='none');
+  renderResults([]);renderCheckResults();setStatus('idle');
+}
+
+// ── Groq ───────────────────────────────────────────────────────
+function saveKey(){const k=document.getElementById('groqKey').value.trim();if(k){localStorage.setItem('groq_key',k);alert('Key saved.');}}
+
+function buildCtx(){
+  const counts={};allLinks.forEach(l=>counts[l.category]=(counts[l.category]||0)+1);
+  const pages=[...new Set(allLinks.map(l=>l.page))];
+  const pdfs=allLinks.filter(l=>l.category==='PDF').map(l=>l.url);
+  const uploads=allLinks.filter(l=>l.category==='WP Uploads').map(l=>l.url);
+  const internal=allLinks.filter(l=>l.category==='Internal Page').map(l=>l.url);
+  const dirs=new Set();
+  allLinks.forEach(l=>{
+    try{
+      const u=new URL(l.url.startsWith('//')?'https:'+l.url:l.url.startsWith('/')?'https://'+currentHostname+l.url:l.url);
+      const p=u.pathname.split('/').filter(Boolean);
+      for(let i=1;i<=p.length;i++)dirs.add('/'+p.slice(0,i).join('/'));
+    }catch(e){}
+  });
+  return `Site: ${currentHostname||'unknown'}
+Pages scanned: ${pages.length}
+Total links: ${allLinks.length}
+Categories: ${Object.entries(counts).map(([k,v])=>k+':'+v).join(', ')}
+
+PDF files (${pdfs.length}):
+${pdfs.join('\n')||'none'}
+
+WP Upload paths (${uploads.length}):
+${uploads.join('\n')||'none'}
+
+Internal pages (${internal.length}):
+${internal.slice(0,100).join('\n')||'none'}
+
+Unique directory paths:
+${[...dirs].sort().join('\n')}`;
+}
+
+const PROMPTS={
+  summary:ctx=>`You are a website migration expert.\n\n${ctx}\n\nGive a concise practical migration summary: what the site contains, what must be preserved, and the top priorities.`,
+  pdfs:ctx=>`Website scan:\n\n${ctx}\n\nList ALL PDF and file upload URLs, grouped by directory. Include full paths. Flag any dated upload paths like /2014/03/ that are critical to preserve.`,
+  '404risk':ctx=>`Website scan:\n\n${ctx}\n\nIdentify every URL pattern that could 404 after migration. Group by high/medium/low risk. Be specific about WP upload paths, dated directories, plugin URLs, and theme assets.`,
+  redirects:ctx=>`Website scan:\n\n${ctx}\n\nGenerate a complete redirect map for this WordPress migration. Format as:\nold_path → new_path [reason]\nCover all upload paths, category URLs, and any old WP-specific routes.`,
+  directories:ctx=>`Website scan:\n\n${ctx}\n\nList every unique directory. Group by: uploads (by year/month), theme files, plugin files, content pages. For each group say what it is and whether it needs to be recreated.`,
+};
+
+async function groqRun(type){
+  if(type==='custom'){document.getElementById('customModal').classList.add('open');return;}
+  if(!allLinks.length){document.getElementById('groqOut').textContent='Load some links first.';return;}
+  const key=document.getElementById('groqKey').value.trim()||localStorage.getItem('groq_key')||'';
+  if(!key){document.getElementById('groqOut').textContent='Enter a Groq API key first.';return;}
+  switchTab('groq');
+  const out=document.getElementById('groqOut');
+  out.textContent='Asking Groq...';
+  await callGroq(key,PROMPTS[type](buildCtx()),out);
+}
+
+async function groqRunCustom(){
+  const p=document.getElementById('customPrompt').value.trim();if(!p)return;
+  document.getElementById('customModal').classList.remove('open');
+  const key=document.getElementById('groqKey').value.trim()||localStorage.getItem('groq_key')||'';
+  if(!key){alert('Enter a Groq API key first.');return;}
+  switchTab('groq');
+  const out=document.getElementById('groqOut');out.textContent='Asking Groq...';
+  await callGroq(key,buildCtx()+'\n\nQuestion: '+p,out);
+}
+
+async function callGroq(key,prompt,out){
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:document.getElementById('groqModel').value,
+        messages:[{role:'user',content:prompt}],max_tokens:2048,temperature:0.3})
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.statusText);}
+    out.textContent=(await res.json()).choices[0].message.content;
+  }catch(e){out.textContent='Error: '+e.message;}
+}
+
+// ── Drag & drop + init ────────────────────────────────────────
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dov');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dov'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dov');handleFiles(e.dataTransfer.files);});
+
+const wpDz=document.getElementById('wpDropZone');
+wpDz.addEventListener('dragover',e=>{e.preventDefault();wpDz.classList.add('dov');});
+wpDz.addEventListener('dragleave',()=>wpDz.classList.remove('dov'));
+wpDz.addEventListener('drop',e=>{e.preventDefault();wpDz.classList.remove('dov');if(e.dataTransfer.files[0])handleWpFile(e.dataTransfer.files[0]);});
+
+window.addEventListener('load',()=>{
+  const k=localStorage.getItem('groq_key');if(k)document.getElementById('groqKey').value=k;
+  setView('grouped');switchTab('scan');
+});
+</script>
+</body>
+</html>
